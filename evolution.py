@@ -35,12 +35,12 @@ if __name__ == "__main__":
                 player.mutate(random.randrange(0,3))
             newPopulation[0] = best['player']
             population = newPopulation
-            if maxScore <= 10:
+            if maxScore <= 60:
                 mode = "m"
-            elif maxScore >= 5:
+            elif maxScore >= 100:
                 mode = "s"
-            if maxScore >= 50:
-                mode = input("Mode (s/M/q): ") or "m"
+            if maxScore >= 100:
+                mode = input("Mode ((s)ingle/(M)ulti/(q)uit): ").lower() or "m"
             scoresOverTime.append(maxScore)
             with open(f"checkpoints/checkpoint-gen-{generation}.pk", "wb") as f:
                 pickle.dump(best['player'], f)

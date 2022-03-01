@@ -71,6 +71,12 @@ class Projectile(PygameObject):
     def __init__(self, x, y, velocity: pygame.Vector2, size=6):
         super().__init__("assets/block.png", x, y, 0.5, size=size)
         self.velocity = Vector2(velocity)
+        self.decay = 1000
+    def update(self):
+        self.decay -= 1
+        if self.decay <= 0:
+            return True
+        super().update()
     
 
 class Asteroid(PygameObject):
@@ -221,4 +227,7 @@ class AISpaceship(PygameObject):
                 if results[i]:
                     vision[i] = True
         return vision
+
+    def mutate(self, amt):
+        self.brain.mutate(amt)
 
