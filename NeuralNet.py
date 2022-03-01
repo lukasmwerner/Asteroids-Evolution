@@ -16,15 +16,15 @@ class Brain(object):
         if type(outputs) == list:
             outputs = np.asarray(outputs, dtype=np.float32)
 
-        self.inputs = inputs # want to have distance[10] vectors from vision rays, also want velocity, position, direction
+        self.inputs = inputs # want to have distance[11] vectors from vision rays, also want velocity, position, direction
         # at most 10 vectors input as to not clober the ai brain with too many inputs
-        self.weights1 = np.random.rand(self.inputs.shape[0], 4)
-        self.weights2 = np.random.rand(4,outputs.shape[0]) # only 4 outputs [left, right, speed up, fire]
+        self.weights1 = np.random.rand(self.inputs.shape[0], 5)
+        self.weights2 = np.random.rand(5,outputs.shape[0]) # only 4 outputs [left, right, speed up, slow down, fire]
         self.y = outputs
         self.output = np.zeros(outputs.shape)
 
-    def predict(self, asteroids, velocity, position, direction):
-        self.inputs = np.asarray(asteroids + velocity + position + direction)
+    def predict(self, inputs):
+        self.inputs = np.asarray(inputs)
         self.layer1 = activation(np.dot(self.inputs, self.weights1))
         self.output = activation(np.dot(self.layer1, self.weights2))
         return self.output

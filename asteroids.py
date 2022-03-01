@@ -63,9 +63,12 @@ while running:
     player.update()
     player.show(screen)
     
+    print(player.check_vision(asteroids))
+
     for asteroid in asteroids:
         asteroid.update()
         asteroid.show(screen)
+    
 
     pygame.display.update()
     pygame.display.flip()

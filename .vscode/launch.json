@@ -5,6 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Lanuch Evolution",
+            "type": "python",
+            "request": "launch",
+            "program": "evolution.py",
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Launch Game",
             "type": "python",
             "request": "launch",

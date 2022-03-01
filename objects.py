@@ -1,8 +1,11 @@
+from typing import List
 import pygame
 import random
 import math
 
 from pygame.math import Vector2
+
+from NeuralNet import Brain
 
 UP = pygame.Vector2(0, -1)
 
@@ -55,7 +58,6 @@ class PygameObject(object):
         return selfCollider.colliderect(otherBoundsCollider)
 
 
-import math
 pi = math.pi
 
 def PointsInCircum(r,c,n=5):
@@ -65,35 +67,24 @@ def PointsInCircum(r,c,n=5):
         for x in range(0,n+1)
     ]
 
-class Spaceship(PygameObject):
-    def __init__(self, image="assets/spaceship.png", size = 32):
-        super().__init__(image, 250, 250, 0, size)
-        self.size = 18
-        self.img_size = 32
-        self.ray_points = PointsInCircum(80, self.position, n=10)
-        
-    def update(self):
-        super().update()
-        self.ray_points = PointsInCircum(80, self.position, n=10)
-
-    def show(self, screen: pygame.display):
-        super().show(screen)
-        for pt in self.ray_points:
-            pygame.draw.circle(screen, (0, 255, 255), (pt[0], pt[1]), 4)
-
+class Projectile(PygameObject):
+    def __init__(self, x, y, velocity: pygame.Vector2, size=6):
+        super().__init__("assets/block.png", x, y, 0.5, size=size)
+        self.velocity = Vector2(velocity)
     
+
 class Asteroid(PygameObject):
     def __init__(self, image="assets/asteroid.png", x=-1, y=-1, size=-1):
 
         if x == -1 and y == -1:    
             rand_x = random.randrange(0, 500, 10)
             rand_y = random.randrange(0, 500, 10)
-            if rand_x > 300 and rand_x < 400:
-                if rand_y > 300 and rand_y < 400:
-                    if rand_x > 300 and rand_x < 400:
-                        rand_x += 100 * random.choice([-1, 1])
-                    if rand_y > 300 and rand_y < 400:
-                        rand_y += 100 * random.choice([-1, 1])
+            if rand_x > 150 and rand_x < 350:
+                if rand_y > 150 and rand_y < 350:
+                    if rand_x > 150 and rand_x < 350:
+                        rand_x += 200 * random.choice([-1, 1])
+                    if rand_y > 150 and rand_y < 350:
+                        rand_y += 200 * random.choice([-1, 1])
             if size == -1:
                 size=random.randrange(16, 64, 8)
             super().__init__(image, rand_x,rand_y, 0.05, size)
@@ -129,8 +120,105 @@ class Asteroid(PygameObject):
         self.size = 0
         return asteroids
 
-class Projectile(PygameObject):
-    def __init__(self, x, y, velocity: pygame.Vector2, size=6):
-        super().__init__("assets/block.png", x, y, 0.5, size=size)
-        self.velocity = Vector2(velocity)
+class Spaceship(PygameObject):
+    def __init__(self, image="assets/spaceship.png", size = 32):
+        super().__init__(image, 250, 250, 0, size)
+        self.size = 18
+        self.img_size = 32
+        self.ray_points = PointsInCircum(40, self.position, n=10) + PointsInCircum(80, self.position, n=6)
+        
+    def update(self):
+        super().update()
+        self.ray_points = PointsInCircum(40, self.position, n=10) + PointsInCircum(80, self.position, n=6)
+
+    def show(self, screen: pygame.display):
+        super().show(screen)
+        for pt in self.ray_points:
+            pygame.draw.circle(screen, (0, 255, 255), (pt[0], pt[1]), 4)
+
+    def asteroid_in_range(self, asteroid: Asteroid)->List[bool]:
+        vision = []
+        for pt in self.ray_points:
+            vision.append(asteroid.collider(PygameObject(image="assets/asteroid.png", x=pt[0], y=pt[1], velocity=0, size=1)))
+        return vision
     
+    def check_vision(self, asteroids: List[Asteroid])->List[bool]:
+        vision = [False for i in range (len(self.ray_points))]
+        for asteroid in asteroids:
+            results = self.asteroid_in_range(asteroid)
+            for i in range(len(results)):
+                if results[i]:
+                    vision[i] = True
+        return vision
+    
+
+spaceship_img = pygame.image.load("assets/spaceship.png")
+spaceship_img = pygame.transform.scale(spaceship_img, (32,32))
+
+class AISpaceship(PygameObject):
+    def __init__(self, brain: Brain):
+        self.brain = brain
+        image="assets/spaceship.png" 
+        size = 32
+        super().__init__(image, 250, 250, 0, size)
+        del self.image
+        self.size = 18
+        self.img_size = 32
+        self.ray_points = PointsInCircum(40, self.position, n=10) + PointsInCircum(80, self.position, n=6)    
+
+    def update(self, visionAsteroids: List[bool]) -> List[Projectile]:
+        super().update()
+        asteroids = [int(i) for i in visionAsteroids]
+
+        normX = self.position.x / 500
+        normY = self.position.y / 500
+        normVeloX = self.velocity.x / 500
+        normVeloY = self.velocity.y / 500
+        directionX = self.direction.x
+        directionY = self.direction.y
+        inputs = asteroids + [normX, normY, normVeloX, normVeloY, directionX, directionY]
+        self.actions = self.brain.predict(inputs = inputs)
+
+        projectiles = []
+        if self.actions[0] > 0.5:
+            self.rotate(1)
+        if self.actions[1] > 0.5:
+            self.rotate(-1)
+        if self.actions[2] > 0.5:
+            self.addVelocity(0.05)
+        if self.actions[3] > 0.5:
+            self.addVelocity(-0.05)
+        if self.actions[4] > 0.5:
+            x = self.position.x
+            y = self.position.y
+            velo = self.direction * 3 + self.velocity
+            projectiles.append(Projectile(x,y,velo))
+        self.ray_points = PointsInCircum(40, self.position, n=10) + PointsInCircum(80, self.position, n=6)
+        return projectiles
+
+    def show(self, screen: pygame.display):
+        img = pygame.transform.rotozoom(spaceship_img, self.direction.angle_to(UP), 1)
+        img_size = pygame.Vector2(img.get_size())
+        blit_position = self.position - img_size * 0.5
+        if self.__DEBUG__:
+            pygame.draw.circle(screen, (255, 0, 0), self.position, self.size)
+        screen.blit(img, blit_position)
+
+        for pt in self.ray_points:
+            pygame.draw.circle(screen, (0, 255, 255), (pt[0], pt[1]), 4)
+
+    def asteroid_in_range(self, asteroid: Asteroid)->List[bool]:
+        vision = []
+        for pt in self.ray_points:
+            vision.append(asteroid.collider(PygameObject(image="assets/asteroid.png", x=pt[0], y=pt[1], velocity=0, size=1)))
+        return vision
+    
+    def check_vision(self, asteroids: List[Asteroid])->List[bool]:
+        vision = [False for i in range (len(self.ray_points))]
+        for asteroid in asteroids:
+            results = self.asteroid_in_range(asteroid)
+            for i in range(len(results)):
+                if results[i]:
+                    vision[i] = True
+        return vision
+
